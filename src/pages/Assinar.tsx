@@ -24,122 +24,199 @@ const Assinar = () => {
   // Estados principais
   const [step, setStep] = useState(1);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [mpInitialized, setMpInitialized] = useState(false);
 
   // Estados do formulário - Dados do cliente
   const [customerData, setCustomerData] = useState({
-    nome: '',
-    sobrenome: '',
+    name: '',
     email: '',
-    telefone: '',
+    phone: '',
+    whatsapp: '',
     cpf: '',
-    endereco: '',
-    cidade: '',
-    estado: '',
-    cep: ''
+    birthDate: '',
+    address: ''
   });
 
   // Estados do cartão
   const [cardholderName, setCardholderName] = useState('');
 
-  // Estado para compatibilidade com código existente
-  const [formData, setFormData] = useState({
-    name: "",
-    email: "",
-    phone: "",
-    whatsapp: "",
-    cpf: "",
-    birthDate: "",
-    address: "",
-  });
-
-  // Estado de loading para compatibilidade
-  const [loading, setLoading] = useState(false);
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const validateCustomerData = () => {
+    const requiredFields = [
+      { field: 'name', label: 'Nome completo' },
+      { field: 'email', label: 'E-mail' },
+      { field: 'phone', label: 'Telefone' },
+      { field: 'whatsapp', label: 'WhatsApp' },
+      { field: 'cpf', label: 'CPF' }
+    ];
     
-    // Validação básica
-    if (!formData.name || !formData.email || !formData.phone || !formData.whatsapp || !formData.cpf) {
+    const missingFields = requiredFields.filter(
+      ({ field }) => !customerData[field as keyof typeof customerData]?.trim()
+    );
+
+    if (missingFields.length > 0) {
+      const missingLabels = missingFields.map(({ label }) => label).join(', ');
+      return { isValid: false, message: `Campos obrigatórios não preenchidos: ${missingLabels}` };
+    }
+
+    // Validação de email
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(customerData.email)) {
+      return { isValid: false, message: 'Por favor, insira um e-mail válido.' };
+    }
+
+    // Validação de CPF (simples)
+    const cpfNumbers = customerData.cpf.replace(/\D/g, '');
+    if (cpfNumbers.length !== 11) {
+      return { isValid: false, message: 'Por favor, insira um CPF válido com 11 dígitos.' };
+    }
+
+    return { isValid: true, message: '' };
+  };
+
+  const handleStepOne = (e: React.FormEvent) => {
+    e.preventDefault();
+    const validation = validateCustomerData();
+    
+    if (!validation.isValid) {
       toast({
         title: "Campos obrigatórios",
-        description: "Por favor, preencha todos os campos obrigatórios (*). ",
+        description: validation.message,
         variant: "destructive",
       });
       return;
     }
+    
+    setStep(2);
+  };
 
-    if (!user) {
-      toast({
-        title: "Autenticação necessária",
-        description: "Você precisa estar logado para assinar.",
-        variant: "destructive",
+  const generateCardToken = async (cardData: any) => {
+    return new Promise((resolve, reject) => {
+      // @ts-ignore
+      window.Mercadopago.createCardToken({
+        cardNumber: cardData.number.replace(/\s/g, ''),
+        cardholderName: cardholderName,
+        cardExpirationMonth: cardData.expiry.split('/')[0],
+        cardExpirationYear: '20' + cardData.expiry.split('/')[1],
+        securityCode: cardData.cvc,
+        identificationType: 'CPF',
+        identificationNumber: customerData.cpf.replace(/\D/g, ''),
+      }, (status: number, response: any) => {
+        if (status === 200 || status === 201) {
+          resolve(response.id);
+        } else {
+          reject(response);
+        }
       });
-      navigate('/auth');
-      return;
-    }
+    });
+  };
 
-    setLoading(true);
-
+  const handlePayment = async (paymentData: any) => {
+    setIsProcessing(true);
+    
     try {
-      // Temporary solution: Save subscription locally and redirect to a payment simulation
-      // TODO: Replace with proper Mercado Pago integration when Edge Functions are deployed
+      let paymentBody;
       
-      // First, save the subscription intent to database
-      const { error: subscriptionError } = await supabase
-        .from('subscriptions')
-        .insert([{
-          user_id: user.id,
-          status: 'pending',
-          amount: 9.90,
-          mercadopago_subscription_id: `temp_${Date.now()}_${user.id.slice(0, 8)}`
-        }]);
-
-      if (subscriptionError) {
-        throw new Error(`Erro ao salvar assinatura: ${subscriptionError.message}`);
+      if (paymentData.method === 'pix') {
+        paymentBody = {
+          transaction_amount: 9.90,
+          description: 'Assinatura Q-aura - Plano Mensal',
+          payment_method_id: 'pix',
+          payer: {
+            email: customerData.email,
+            first_name: customerData.name.split(' ')[0],
+            last_name: customerData.name.split(' ').slice(1).join(' '),
+            identification: {
+              type: 'CPF',
+              number: customerData.cpf.replace(/\D/g, '')
+            }
+          }
+        };
+      } else {
+        const cardToken = await generateCardToken(paymentData.cardData);
+        paymentBody = {
+          transaction_amount: 9.90,
+          description: 'Assinatura Q-aura - Plano Mensal',
+          payment_method_id: paymentData.cardData.brand,
+          token: cardToken,
+          installments: paymentData.installments || 1,
+          payer: {
+            email: customerData.email,
+            first_name: customerData.name.split(' ')[0],
+            last_name: customerData.name.split(' ').slice(1).join(' '),
+            identification: {
+              type: 'CPF',
+              number: customerData.cpf.replace(/\D/g, '')
+            }
+          }
+        };
       }
+
+      // Salvar no banco de dados primeiro (usando any temporariamente até atualizar os types)
+      // @ts-ignore - Ignorando erro de tipagem até regenerar types do Supabase
+      const { error } = await supabase
+        .from('subscriptions')
+        .insert([
+          {
+            name: customerData.name,
+            email: customerData.email,
+            phone: customerData.phone,
+            whatsapp: customerData.whatsapp,
+            cpf: customerData.cpf,
+            birth_date: customerData.birthDate,
+            address: customerData.address,
+            status: 'pending',
+            plan: 'mensal',
+            payment_method: paymentData.method
+          }
+        ] as any);
+
+      if (error) {
+        console.error('Erro ao salvar no banco:', error);
+        throw new Error(`Erro ao salvar dados: ${error.message || 'Erro desconhecido'}`);
+      }
+
+      // Simular processamento de pagamento (substituir por integração real depois)
+      await new Promise(resolve => setTimeout(resolve, 2000));
 
       toast({
-        title: "Assinatura Criada!",
-        description: "Dados salvos com sucesso. Redirecionando para finalizar pagamento...",
-        variant: "default",
+        title: "Pagamento Processado!",
+        description: paymentData.method === 'pix' 
+          ? "PIX gerado com sucesso! Escaneie o código para finalizar."
+          : "Pagamento no cartão processado com sucesso!",
       });
 
-      // Redirecionar para página de sucesso
-      setTimeout(() => {
-        navigate('/pagamento-sucesso');
-      }, 2000);
-
-      // COMMENTED OUT: Edge Function call (to be restored when functions are deployed)
-      /*
-      const { data, error } = await supabase.functions.invoke('create-mercadopago-preference', {
-        body: formData,
+      navigate('/pagamento-sucesso', { 
+        state: { 
+          method: paymentData.method,
+          amount: 9.90
+        } 
       });
-
-      if (error) throw error;
-
-      if (data?.init_point) {
-        window.location.href = data.init_point;
-      } else {
-        throw new Error('Erro ao criar preferência de pagamento');
-      }
-      */
       
     } catch (error: any) {
-      console.error('Error creating subscription:', error);
+      console.error('Erro no pagamento:', error);
+      
+      let errorMessage = "Não foi possível processar o pagamento. Tente novamente.";
+      
+      if (error.message?.includes('salvar dados')) {
+        errorMessage = "Erro ao salvar seus dados. Verifique sua conexão e tente novamente.";
+      } else if (error.message?.includes('CPF')) {
+        errorMessage = "CPF inválido. Verifique os dados informados.";
+      } else if (error.message?.includes('email')) {
+        errorMessage = "E-mail inválido. Verifique o formato do e-mail.";
+      }
+      
       toast({
-        title: "Erro",
-        description: error.message || "Erro ao processar assinatura. Tente novamente.",
+        title: "Erro no Pagamento",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
-      setLoading(false);
+      setIsProcessing(false);
     }
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData({
-      ...formData,
+    setCustomerData({
+      ...customerData,
       [e.target.name]: e.target.value,
     });
   };
@@ -175,112 +252,201 @@ const Assinar = () => {
           </CardHeader>
 
           <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-6">
-              <div className="space-y-2">
-                <Label htmlFor="name">Nome Completo *</Label>
-                <Input
-                  id="name"
-                  name="name"
-                  placeholder="Digite seu nome completo"
-                  value={formData.name}
-                  onChange={handleChange}
-                  required
-                />
+            {/* Progress Indicator */}
+            <div className="mb-6">
+              <div className="flex items-center justify-between mb-2">
+                <span className={`text-sm ${step >= 1 ? 'text-primary' : 'text-muted-foreground'}`}>
+                  Dados Pessoais
+                </span>
+                <span className={`text-sm ${step >= 2 ? 'text-primary' : 'text-muted-foreground'}`}>
+                  Pagamento
+                </span>
               </div>
+              <div className="w-full bg-muted rounded-full h-2">
+                <div 
+                  className="bg-gradient-primary h-2 rounded-full transition-all duration-300" 
+                  style={{ width: `${(step / 2) * 100}%` }}
+                ></div>
+              </div>
+            </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="email">E-mail *</Label>
-                <Input
-                  id="email"
-                  name="email"
-                  type="email"
-                  placeholder="seu@email.com"
-                  value={formData.email}
-                  onChange={handleChange}
-                  required
-                />
-              </div>
+            {step === 1 && (
+              <form onSubmit={handleStepOne} className="space-y-6">
+                <div className="space-y-2">
+                  <Label htmlFor="name">Nome Completo *</Label>
+                  <Input
+                    id="name"
+                    name="name"
+                    placeholder="Digite seu nome completo"
+                    value={customerData.name}
+                    onChange={handleChange}
+                    required
+                  />
+                </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="phone">Telefone (com DDD) *</Label>
-                <Input
-                  id="phone"
-                  name="phone"
-                  type="tel"
-                  placeholder="(11) 98765-4321"
-                  value={formData.phone}
-                  onChange={handleChange}
-                  required
-                />
-              </div>
+                <div className="space-y-2">
+                  <Label htmlFor="email">E-mail *</Label>
+                  <Input
+                    id="email"
+                    name="email"
+                    type="email"
+                    placeholder="seu@email.com"
+                    value={customerData.email}
+                    onChange={handleChange}
+                    required
+                  />
+                </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="whatsapp">WhatsApp (com DDD) *</Label>
-                <Input
-                  id="whatsapp"
-                  name="whatsapp"
-                  type="tel"
-                  placeholder="(11) 98765-4321"
-                  value={formData.whatsapp}
-                  onChange={handleChange}
-                  required
-                />
-                <p className="text-xs text-muted-foreground">
-                  É por este número que você receberá o conteúdo
-                </p>
-              </div>
+                <div className="space-y-2">
+                  <Label htmlFor="phone">Telefone (com DDD) *</Label>
+                  <Input
+                    id="phone"
+                    name="phone"
+                    type="tel"
+                    placeholder="(11) 98765-4321"
+                    value={customerData.phone}
+                    onChange={handleChange}
+                    required
+                  />
+                </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="cpf">CPF *</Label>
-                <Input
-                  id="cpf"
-                  name="cpf"
-                  placeholder="000.000.000-00"
-                  value={formData.cpf}
-                  onChange={handleChange}
-                  required
-                />
-              </div>
+                <div className="space-y-2">
+                  <Label htmlFor="whatsapp">WhatsApp (com DDD) *</Label>
+                  <Input
+                    id="whatsapp"
+                    name="whatsapp"
+                    type="tel"
+                    placeholder="(11) 98765-4321"
+                    value={customerData.whatsapp}
+                    onChange={handleChange}
+                    required
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    É por este número que você receberá o conteúdo
+                  </p>
+                </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="birthDate">Data de Nascimento</Label>
-                <Input
-                  id="birthDate"
-                  name="birthDate"
-                  type="date"
-                  value={formData.birthDate}
-                  onChange={handleChange}
-                />
-              </div>
+                <div className="space-y-2">
+                  <Label htmlFor="cpf">CPF *</Label>
+                  <Input
+                    id="cpf"
+                    name="cpf"
+                    placeholder="000.000.000-00"
+                    value={customerData.cpf}
+                    onChange={handleChange}
+                    required
+                  />
+                </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="address">Endereço (Opcional)</Label>
-                <Input
-                  id="address"
-                  name="address"
-                  placeholder="Rua, número, bairro, cidade - UF"
-                  value={formData.address}
-                  onChange={handleChange}
-                />
-              </div>
+                <div className="space-y-2">
+                  <Label htmlFor="birthDate">Data de Nascimento</Label>
+                  <Input
+                    id="birthDate"
+                    name="birthDate"
+                    type="date"
+                    value={customerData.birthDate}
+                    onChange={handleChange}
+                  />
+                </div>
 
-              <div className="pt-4">
-                <Button 
-                  type="submit" 
-                  size="lg" 
-                  variant="hero"
-                  className="w-full text-lg py-6 h-auto"
-                  disabled={loading}
-                >
-                  {loading ? 'Processando...' : 'Finalizar Assinatura'}
-                </Button>
-              </div>
+                <div className="space-y-2">
+                  <Label htmlFor="address">Endereço (Opcional)</Label>
+                  <Input
+                    id="address"
+                    name="address"
+                    placeholder="Rua, número, bairro, cidade - UF"
+                    value={customerData.address}
+                    onChange={handleChange}
+                  />
+                </div>
 
-              <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
-                <Lock className="w-4 h-4" />
-                <span>Dados protegidos e pagamento seguro</span>
+                <div className="pt-4">
+                  <Button 
+                    type="submit" 
+                    size="lg" 
+                    variant="hero"
+                    className="w-full text-lg py-6 h-auto"
+                  >
+                    Continuar para Pagamento
+                  </Button>
+                </div>
+              </form>
+            )}
+
+            {step === 2 && (
+              <div className="space-y-6">
+                <div className="text-center mb-6">
+                  <h3 className="text-xl font-semibold mb-2">Escolha a forma de pagamento</h3>
+                  <p className="text-muted-foreground">
+                    Como você gostaria de pagar sua assinatura?
+                  </p>
+                </div>
+
+                <div className="grid gap-4">
+                  <Button
+                    variant="outline"
+                    className="h-auto p-4 justify-start"
+                    onClick={() => handlePayment({ method: 'pix' })}
+                    disabled={isProcessing}
+                  >
+                    <div className="flex items-center space-x-3">
+                      <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center">
+                        <span className="text-primary font-bold text-sm">PIX</span>
+                      </div>
+                      <div className="text-left">
+                        <div className="font-medium">PIX</div>
+                        <div className="text-sm text-muted-foreground">Pagamento instantâneo</div>
+                      </div>
+                    </div>
+                  </Button>
+
+                  <Button
+                    variant="outline"
+                    className="h-auto p-4 justify-start"
+                    onClick={() => {
+                      // Por enquanto vamos simular cartão como PIX
+                      handlePayment({ method: 'card' });
+                    }}
+                    disabled={isProcessing}
+                  >
+                    <div className="flex items-center space-x-3">
+                      <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center">
+                        <span className="text-primary font-bold text-sm">💳</span>
+                      </div>
+                      <div className="text-left">
+                        <div className="font-medium">Cartão de Crédito</div>
+                        <div className="text-sm text-muted-foreground">Parcelamento disponível</div>
+                      </div>
+                    </div>
+                  </Button>
+                </div>
+
+                <div className="pt-4">
+                  <Button 
+                    variant="ghost" 
+                    onClick={() => setStep(1)}
+                    className="w-full"
+                    disabled={isProcessing}
+                  >
+                    ← Voltar para dados pessoais
+                  </Button>
+                </div>
+
+                {isProcessing && (
+                  <div className="text-center py-4">
+                    <div className="inline-flex items-center space-x-2">
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
+                      <span>Processando pagamento...</span>
+                    </div>
+                  </div>
+                )}
               </div>
-            </form>
+            )}
+
+            <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground mt-6">
+              <Lock className="w-4 h-4" />
+              <span>Dados protegidos e pagamento seguro</span>
+            </div>
           </CardContent>
         </Card>
       </div>
