@@ -1,0 +1,3 @@
+# Force Node.js detection
+engines:
+  node: "18"

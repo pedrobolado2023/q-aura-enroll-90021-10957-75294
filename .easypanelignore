@@ -1,7 +1,12 @@
-# Arquivos que o EasyPanel deve ignorar no deploy
+# Forçar detecção como Node.js removendo arquivos Deno
 supabase/functions/
 supabase/migrations/
 supabase/config.toml
+deno.json
+deno.jsonc
+*.ts
+!src/**/*.ts
+!src/**/*.tsx
 *.md
 README.md
 README-DEPLOY.md

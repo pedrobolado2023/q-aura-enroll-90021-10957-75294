@@ -5,6 +5,10 @@
   "version": "1.0.0",
   "type": "module",
   "homepage": "https://github.com/pedrobolado2023/q-aura-enroll-90021-10957-75294",
+  "engines": {
+    "node": "18.x",
+    "npm": ">=8.0.0"
+  },
   "scripts": {
     "dev": "vite",
     "build": "vite build",
