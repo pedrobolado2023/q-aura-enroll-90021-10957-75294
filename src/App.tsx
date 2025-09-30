@@ -9,6 +9,8 @@ import Assinar from "./pages/Assinar";
 import Auth from "./pages/Auth";
 import Admin from "./pages/Admin";
 import NotFound from "./pages/NotFound";
+import PagamentoSucesso from "./pages/PagamentoSucesso";
+import PagamentoErro from "./pages/PagamentoErro";
 
 const queryClient = new QueryClient();
 
@@ -24,6 +26,8 @@ const App = () => (
             <Route path="/auth" element={<Auth />} />
             <Route path="/admin" element={<Admin />} />
             <Route path="/assinar" element={<Assinar />} />
+            <Route path="/pagamento-sucesso" element={<PagamentoSucesso />} />
+            <Route path="/pagamento-erro" element={<PagamentoErro />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

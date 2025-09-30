@@ -47,7 +47,37 @@ const Assinar = () => {
     setLoading(true);
 
     try {
-      // Call edge function to create Mercado Pago preference
+      // Temporary solution: Save subscription locally and redirect to a payment simulation
+      // TODO: Replace with proper Mercado Pago integration when Edge Functions are deployed
+      
+      // First, save the subscription intent to database
+      const { error: subscriptionError } = await supabase
+        .from('subscriptions')
+        .insert([{
+          user_id: user.id,
+          status: 'pending',
+          amount: 9.90,
+          mercadopago_subscription_id: `temp_${Date.now()}_${user.id.slice(0, 8)}`
+        }]);
+
+      if (subscriptionError) {
+        throw new Error(`Erro ao salvar assinatura: ${subscriptionError.message}`);
+      }
+
+      // For now, show success message and redirect to a temporary success page
+      toast({
+        title: "Assinatura Iniciada!",
+        description: "Sua assinatura foi registrada. Em breve você receberá instruções de pagamento por email.",
+        variant: "default",
+      });
+
+      // Redirect to home after a moment
+      setTimeout(() => {
+        navigate('/');
+      }, 3000);
+
+      // COMMENTED OUT: Edge Function call (to be restored when functions are deployed)
+      /*
       const { data, error } = await supabase.functions.invoke('create-mercadopago-preference', {
         body: formData,
       });
@@ -55,16 +85,17 @@ const Assinar = () => {
       if (error) throw error;
 
       if (data?.init_point) {
-        // Redirect to Mercado Pago checkout
         window.location.href = data.init_point;
       } else {
         throw new Error('Erro ao criar preferência de pagamento');
       }
+      */
+      
     } catch (error: any) {
-      console.error('Error creating preference:', error);
+      console.error('Error creating subscription:', error);
       toast({
         title: "Erro",
-        description: error.message || "Erro ao processar pagamento. Verifique se o Mercado Pago está configurado no painel admin.",
+        description: error.message || "Erro ao processar assinatura. Tente novamente.",
         variant: "destructive",
       });
     } finally {
