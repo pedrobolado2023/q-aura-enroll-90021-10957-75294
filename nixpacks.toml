@@ -1,12 +1,12 @@
-# Nixpacks configuration
 [phases.setup]
 providers = ["node"]
 
 [phases.build]
-cmds = ["npm ci", "npm run build"]
+cmds = ["npm ci --only=production", "npm run build"]
 
-[phases.deploy]
-staticAssets = "dist"
+[phases.start]
+cmd = "npx serve dist -s -l 3000"
 
 [variables]
 NODE_VERSION = "18"
+NPM_CONFIG_PRODUCTION = "false"

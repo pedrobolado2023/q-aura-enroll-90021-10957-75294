@@ -1,19 +1,16 @@
 {
-  "type": "static",
+  "type": "app",
   "build": {
     "buildCommand": "npm install && npm run build",
-    "outputDirectory": "dist",
     "framework": "vite",
     "nodeVersion": "18"
   },
-  "routes": [
-    {
-      "src": "/(.*)",
-      "dest": "/index.html"
-    }
-  ],
+  "start": {
+    "startCommand": "npx serve dist -s -l $PORT"
+  },
   "env": {
     "NODE_VERSION": "18",
+    "PORT": "3000",
     "VITE_SUPABASE_URL": "$VITE_SUPABASE_URL",
     "VITE_SUPABASE_PUBLISHABLE_KEY": "$VITE_SUPABASE_PUBLISHABLE_KEY"
   }
