@@ -19,16 +19,19 @@ const Assinar = () => {
     email: "",
     phone: "",
     whatsapp: "",
+    cpf: "",
+    birthDate: "",
+    address: "",
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     // Validação básica
-    if (!formData.name || !formData.email || !formData.phone || !formData.whatsapp) {
+    if (!formData.name || !formData.email || !formData.phone || !formData.whatsapp || !formData.cpf) {
       toast({
         title: "Campos obrigatórios",
-        description: "Por favor, preencha todos os campos.",
+        description: "Por favor, preencha todos os campos obrigatórios (*). ",
         variant: "destructive",
       });
       return;
@@ -64,17 +67,16 @@ const Assinar = () => {
         throw new Error(`Erro ao salvar assinatura: ${subscriptionError.message}`);
       }
 
-      // For now, show success message and redirect to a temporary success page
       toast({
-        title: "Assinatura Iniciada!",
-        description: "Sua assinatura foi registrada. Em breve você receberá instruções de pagamento por email.",
+        title: "Assinatura Criada!",
+        description: "Dados salvos com sucesso. Redirecionando para finalizar pagamento...",
         variant: "default",
       });
 
-      // Redirect to home after a moment
+      // Redirecionar para página de sucesso
       setTimeout(() => {
-        navigate('/');
-      }, 3000);
+        navigate('/pagamento-sucesso');
+      }, 2000);
 
       // COMMENTED OUT: Edge Function call (to be restored when functions are deployed)
       /*
@@ -196,6 +198,40 @@ const Assinar = () => {
                 </p>
               </div>
 
+              <div className="space-y-2">
+                <Label htmlFor="cpf">CPF *</Label>
+                <Input
+                  id="cpf"
+                  name="cpf"
+                  placeholder="000.000.000-00"
+                  value={formData.cpf}
+                  onChange={handleChange}
+                  required
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="birthDate">Data de Nascimento</Label>
+                <Input
+                  id="birthDate"
+                  name="birthDate"
+                  type="date"
+                  value={formData.birthDate}
+                  onChange={handleChange}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="address">Endereço (Opcional)</Label>
+                <Input
+                  id="address"
+                  name="address"
+                  placeholder="Rua, número, bairro, cidade - UF"
+                  value={formData.address}
+                  onChange={handleChange}
+                />
+              </div>
+
               <div className="pt-4">
                 <Button 
                   type="submit" 
@@ -204,13 +240,13 @@ const Assinar = () => {
                   className="w-full text-lg py-6 h-auto"
                   disabled={loading}
                 >
-                  {loading ? 'Processando...' : 'Continuar para Pagamento'}
+                  {loading ? 'Processando...' : 'Finalizar Assinatura'}
                 </Button>
               </div>
 
               <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
                 <Lock className="w-4 h-4" />
-                <span>Pagamento 100% seguro via Mercado Pago</span>
+                <span>Dados protegidos e pagamento seguro</span>
               </div>
             </form>
           </CardContent>
