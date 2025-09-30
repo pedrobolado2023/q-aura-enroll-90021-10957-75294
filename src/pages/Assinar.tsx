@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import { CreditCard, Shield, Lock, ChevronLeft } from "lucide-react";
+import { CreditCard, Shield, Lock, ChevronLeft, ArrowLeft } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -41,6 +41,20 @@ const Assinar = () => {
 
   // Estados do cartão
   const [cardholderName, setCardholderName] = useState('');
+
+  // Estado para compatibilidade com código existente
+  const [formData, setFormData] = useState({
+    name: "",
+    email: "",
+    phone: "",
+    whatsapp: "",
+    cpf: "",
+    birthDate: "",
+    address: "",
+  });
+
+  // Estado de loading para compatibilidade
+  const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
