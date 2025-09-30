@@ -1,28 +1,46 @@
-import { useState } from "react";
+import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ArrowLeft, Lock } from "lucide-react";
+import { Separator } from "@/components/ui/separator";
+import { CreditCard, Shield, Lock, ChevronLeft } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 
+declare global {
+  interface Window {
+    MercadoPago: any;
+  }
+}
+
 const Assinar = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { user } = useAuth();
-  const [loading, setLoading] = useState(false);
-  const [formData, setFormData] = useState({
-    name: "",
-    email: "",
-    phone: "",
-    whatsapp: "",
-    cpf: "",
-    birthDate: "",
-    address: "",
+
+  // Estados principais
+  const [step, setStep] = useState(1);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [mpInitialized, setMpInitialized] = useState(false);
+
+  // Estados do formulário - Dados do cliente
+  const [customerData, setCustomerData] = useState({
+    nome: '',
+    sobrenome: '',
+    email: '',
+    telefone: '',
+    cpf: '',
+    endereco: '',
+    cidade: '',
+    estado: '',
+    cep: ''
   });
+
+  // Estados do cartão
+  const [cardholderName, setCardholderName] = useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
