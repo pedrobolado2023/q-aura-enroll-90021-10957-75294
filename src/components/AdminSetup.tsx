@@ -17,12 +17,21 @@ const AdminSetup = () => {
 
     setLoading(true);
     try {
+      console.log('Attempting to make admin for user:', user.id);
+      
       // First check if user already has a role
-      const { data: existingRole } = await supabase
+      const { data: existingRole, error: checkError } = await supabase
         .from('user_roles')
         .select('role')
         .eq('user_id', user.id)
         .maybeSingle();
+
+      if (checkError) {
+        console.error('Error checking existing role:', checkError);
+        throw checkError;
+      }
+
+      console.log('Existing role data:', existingRole);
 
       if (existingRole) {
         if (existingRole.role === 'admin') {
@@ -37,7 +46,10 @@ const AdminSetup = () => {
             .update({ role: 'admin' })
             .eq('user_id', user.id);
 
-          if (error) throw error;
+          if (error) {
+            console.error('Error updating role:', error);
+            throw error;
+          }
 
           toast({
             title: "Sucesso!",
@@ -46,11 +58,15 @@ const AdminSetup = () => {
         }
       } else {
         // Insert new admin role
+        console.log('Inserting new admin role for user:', user.id);
         const { error } = await supabase
           .from('user_roles')
           .insert([{ user_id: user.id, role: 'admin' }]);
 
-        if (error) throw error;
+        if (error) {
+          console.error('Error inserting role:', error);
+          throw error;
+        }
 
         toast({
           title: "Sucesso!",
@@ -67,7 +83,7 @@ const AdminSetup = () => {
       console.error('Error making admin:', error);
       toast({
         title: "Erro",
-        description: "Erro ao configurar administrador",
+        description: `Erro ao configurar administrador: ${error.message || 'Erro desconhecido'}`,
         variant: "destructive",
       });
     } finally {

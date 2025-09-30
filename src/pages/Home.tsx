@@ -4,6 +4,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import Header from "@/components/Header";
 import AdminSetup from "@/components/AdminSetup";
+import SupabaseTest from "@/components/SupabaseTest";
 import HeroSection from "@/components/HeroSection";
 import FeaturesSection from "@/components/FeaturesSection";
 import PricingSection from "@/components/PricingSection";
@@ -64,7 +65,10 @@ const Home = () => {
       <div className="min-h-screen">
         <Header />
         <div className="flex items-center justify-center py-20">
-          <AdminSetup />
+          <div className="space-y-4">
+            <SupabaseTest />
+            <AdminSetup />
+          </div>
         </div>
       </div>
     );

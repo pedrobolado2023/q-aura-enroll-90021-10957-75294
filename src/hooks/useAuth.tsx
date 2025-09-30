@@ -80,7 +80,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     try {
       const redirectUrl = `${window.location.origin}/auth?type=signup`;
       
-      const { error } = await supabase.auth.signUp({
+      const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
@@ -95,8 +95,12 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         return { error: error.message };
       }
 
+      // Log para debug
+      console.log('Signup response:', data);
+
       return {};
     } catch (error) {
+      console.error('Signup error:', error);
       return { error: 'Erro inesperado durante o cadastro' };
     }
   };
