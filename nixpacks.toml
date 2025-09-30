@@ -12,10 +12,3 @@ cmd = "npx serve dist -s -l $PORT"
 
 [variables]
 NODE_VERSION = "18"
-
-# Force Node.js detection and ignore Deno files
-[providers.node]
-version = "18"
-
-[providers.deno]
-enabled = false
