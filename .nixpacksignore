@@ -1,6 +1,8 @@
 # Ignore Supabase Edge Functions (Deno) to prevent Nixpacks from detecting Deno
 supabase/functions/
 supabase/functions/**
+supabase-functions-local/
+supabase-functions-local/**
 
 # Ignore other Supabase files that might confuse detection
 supabase/migrations/

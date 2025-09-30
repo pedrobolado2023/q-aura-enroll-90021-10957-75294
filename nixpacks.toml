@@ -1,5 +1,8 @@
+[providers]
+node = "18"
+
 [phases.setup]
-providers = ["node"]
+nixPkgs = ["nodejs_18", "npm-9_x"]
 
 [phases.install]
 cmds = ["npm ci"]
@@ -12,3 +15,4 @@ cmd = "npx serve dist -s -l $PORT"
 
 [variables]
 NODE_VERSION = "18"
+NPM_CONFIG_PRODUCTION = "false"
