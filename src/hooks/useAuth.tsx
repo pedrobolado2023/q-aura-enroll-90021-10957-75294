@@ -9,6 +9,7 @@ interface AuthContextType {
   signUp: (email: string, password: string, displayName?: string) => Promise<{ error?: string }>;
   signIn: (email: string, password: string) => Promise<{ error?: string }>;
   signOut: () => Promise<void>;
+  resendConfirmation: (email: string) => Promise<{ error?: string }>;
   loading: boolean;
   isAdmin: boolean;
 }
@@ -77,7 +78,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
   const signUp = async (email: string, password: string, displayName?: string) => {
     try {
-      const redirectUrl = `${window.location.origin}/`;
+      const redirectUrl = `${window.location.origin}/auth?type=signup`;
       
       const { error } = await supabase.auth.signUp({
         email,
@@ -97,6 +98,28 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       return {};
     } catch (error) {
       return { error: 'Erro inesperado durante o cadastro' };
+    }
+  };
+
+  const resendConfirmation = async (email: string) => {
+    try {
+      const redirectUrl = `${window.location.origin}/auth?type=signup`;
+      
+      const { error } = await supabase.auth.resend({
+        type: 'signup',
+        email,
+        options: {
+          emailRedirectTo: redirectUrl
+        }
+      });
+
+      if (error) {
+        return { error: error.message };
+      }
+
+      return {};
+    } catch (error) {
+      return { error: 'Erro inesperado ao reenviar confirmação' };
     }
   };
 
@@ -127,6 +150,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     signUp,
     signIn,
     signOut,
+    resendConfirmation,
     loading,
     isAdmin,
   };
