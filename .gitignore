@@ -22,3 +22,15 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Supabase Edge Functions (não precisam no deploy do frontend)
+supabase/functions/
+supabase/config.toml
+supabase/migrations/
+
+# Environment files
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local

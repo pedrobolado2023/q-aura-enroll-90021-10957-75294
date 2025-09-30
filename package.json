@@ -1,8 +1,10 @@
 {
-  "name": "vite_react_shadcn_ts",
+  "name": "q-aura-site",
+  "description": "Q-aura - Sistema de Estudos via WhatsApp (Frontend React)",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
   "type": "module",
+  "homepage": "https://github.com/pedrobolado2023/q-aura-enroll-90021-10957-75294",
   "scripts": {
     "dev": "vite",
     "build": "vite build",

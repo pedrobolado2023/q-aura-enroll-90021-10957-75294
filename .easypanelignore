@@ -1,0 +1,6 @@
+# Arquivos que o EasyPanel deve ignorar no deploy
+supabase/
+*.md
+.env
+.env.example
+deploy.sh
