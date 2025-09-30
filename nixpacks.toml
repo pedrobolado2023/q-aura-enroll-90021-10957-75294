@@ -1,7 +1,5 @@
-[providers]
-node = "18"
-
 [phases.setup]
+providers = ["node"]
 nixPkgs = ["nodejs_18", "npm-9_x"]
 
 [phases.install]
