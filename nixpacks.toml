@@ -1,0 +1,12 @@
+# Nixpacks configuration
+[phases.setup]
+providers = ["node"]
+
+[phases.build]
+cmds = ["npm ci", "npm run build"]
+
+[phases.deploy]
+staticAssets = "dist"
+
+[variables]
+NODE_VERSION = "18"

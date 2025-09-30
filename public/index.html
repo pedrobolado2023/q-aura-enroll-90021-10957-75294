@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Q-aura - Sistema de Estudos via WhatsApp</title>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            margin: 0;
+            padding: 20px;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .container {
+            background: white;
+            padding: 2rem;
+            border-radius: 10px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            text-align: center;
+            max-width: 500px;
+        }
+        .logo {
+            width: 80px;
+            height: 80px;
+            background: #667eea;
+            border-radius: 50%;
+            margin: 0 auto 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 2rem;
+            font-weight: bold;
+        }
+        h1 { color: #333; margin-bottom: 1rem; }
+        p { color: #666; margin-bottom: 1.5rem; }
+        .btn {
+            background: #667eea;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 6px;
+            text-decoration: none;
+            display: inline-block;
+            margin: 0.5rem;
+            transition: background 0.3s;
+        }
+        .btn:hover { background: #5a6fd8; }
+        .status {
+            background: #f0f9ff;
+            border: 1px solid #0ea5e9;
+            border-radius: 6px;
+            padding: 1rem;
+            margin-top: 1rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="logo">Q</div>
+        <h1>Q-aura</h1>
+        <p>Sistema de Estudos via WhatsApp</p>
+        
+        <div class="status">
+            <strong>✅ Site funcionando!</strong><br>
+            Deploy realizado com sucesso no EasyPanel
+        </div>
+        
+        <div style="margin-top: 2rem;">
+            <a href="#" class="btn" onclick="loadReactApp()">Acessar Aplicação</a>
+            <a href="https://github.com/pedrobolado2023/q-aura-enroll-90021-10957-75294" class="btn">Ver Código</a>
+        </div>
+    </div>
+
+    <script>
+        function loadReactApp() {
+            // Redirecionar para a aplicação React quando estiver pronta
+            window.location.href = '/app';
+        }
+        
+        // Auto-verificar se a aplicação React está disponível
+        setTimeout(() => {
+            fetch('/assets/index.js')
+                .then(() => {
+                    document.querySelector('.status').innerHTML = 
+                        '<strong>🚀 Aplicação React carregada!</strong><br>Redirecionando...';
+                    setTimeout(() => loadReactApp(), 2000);
+                })
+                .catch(() => {
+                    console.log('Aplicação React ainda carregando...');
+                });
+        }, 3000);
+    </script>
+</body>
+</html>

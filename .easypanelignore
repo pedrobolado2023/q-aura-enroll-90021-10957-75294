@@ -1,6 +1,15 @@
 # Arquivos que o EasyPanel deve ignorar no deploy
-supabase/
+supabase/functions/
+supabase/migrations/
+supabase/config.toml
 *.md
+README.md
+README-DEPLOY.md
 .env
 .env.example
+.env.local
 deploy.sh
+.vscode/
+.idea/
+node_modules/
+.git/
