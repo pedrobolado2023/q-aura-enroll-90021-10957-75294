@@ -168,28 +168,106 @@ const Assinar = () => {
         throw new Error('Método de pagamento não suportado');
       }
 
-      // Salvar no banco de dados primeiro (usando any temporariamente até atualizar os types)
-      // @ts-ignore - Ignorando erro de tipagem até regenerar types do Supabase
-      const { error } = await supabase
+      // Testar se conseguimos conectar com o banco
+      console.log('🔍 SUPER DEBUG - Investigando banco de dados...');
+      
+      // 1. Testar conexão básica com Supabase
+      console.log('🔗 Testando conexão básica...');
+      const { data: basicTest, error: basicError } = await supabase
         .from('subscriptions')
-        .insert([
-          {
-            name: customerData.name,
-            email: customerData.email,
-            phone: customerData.phone,
-            whatsapp: customerData.whatsapp,
-            cpf: customerData.cpf,
-            // birth_date: customerData.birthDate, // Removido temporariamente 
-            // address: customerData.address, // Removido temporariamente - coluna não existe em prod
-            status: 'pending',
-            plan: 'mensal',
-            payment_method: paymentData.method
+        .select('count')
+        .limit(1);
+      
+      console.log('🔗 Resultado conexão:', { basicTest, basicError });
+      
+      // 2. Tentar descobrir a estrutura exata da tabela
+      console.log('🏗️ Investigando estrutura da tabela...');
+      
+      // Tentar diferentes approaches para descobrir colunas
+      try {
+        // Approach 1: Tentar buscar 1 registro para ver estrutura
+        const { data: sampleData, error: sampleError } = await supabase
+          .from('subscriptions')
+          .select('*')
+          .limit(1);
+        
+        console.log('📋 Dados de exemplo:', { sampleData, sampleError });
+        
+        // Approach 2: Tentar inserir um objeto vazio para ver que erro aparece
+        console.log('🧪 Testando inserção vazia...');
+        const { data: emptyInsert, error: emptyError } = await supabase
+          .from('subscriptions')
+          .insert({})
+          .select();
+        
+        console.log('🧪 Resultado inserção vazia:', { emptyInsert, emptyError });
+        
+        // Approach 3: Tentar inserir com campos básicos
+        console.log('💾 Testando inserção básica...');
+        const { data: basicInsert, error: basicInsertError } = await supabase
+          .from('subscriptions')
+          .insert({ status: 'pending' })
+          .select();
+        
+        console.log('💾 Resultado inserção básica:', { basicInsert, basicInsertError });
+        
+        if (basicInsertError) {
+          console.error('🔥 ERRO ESPECÍFICO DA INSERÇÃO:', {
+            message: basicInsertError.message,
+            details: basicInsertError.details,
+            hint: basicInsertError.hint,
+            code: basicInsertError.code
+          });
+          
+          // Vamos tentar descobrir quais campos são obrigatórios
+          console.log('🔍 Tentando diferentes combinações de campos...');
+          
+          // Teste 1: id + status
+          const test1 = await supabase
+            .from('subscriptions')
+            .insert({ id: crypto.randomUUID(), status: 'pending' })
+            .select();
+          console.log('Test 1 (id + status):', test1);
+          
+          if (test1.error) {
+            // Teste 2: user_id + status  
+            const test2 = await supabase
+              .from('subscriptions')
+              .insert({ user_id: crypto.randomUUID(), status: 'pending' })
+              .select();
+            console.log('Test 2 (user_id + status):', test2);
+            
+            if (test2.error) {
+              // Teste 3: campos mais completos
+              const test3 = await supabase
+                .from('subscriptions')
+                .insert({ 
+                  user_id: crypto.randomUUID(),
+                  status: 'pending',
+                  plan: 'premium',
+                  created_at: new Date().toISOString()
+                })
+                .select();
+              console.log('Test 3 (completo):', test3);
+              
+              if (test3.error) {
+                throw new Error(`Não conseguiu identificar estrutura da tabela: ${test3.error.message}`);
+              } else {
+                console.log('✅ SUCESSO com campos completos!');
+              }
+            } else {
+              console.log('✅ SUCESSO com user_id + status!');
+            }
+          } else {
+            console.log('✅ SUCESSO com id + status!');
           }
-        ] as any);
-
-      if (error) {
-        console.error('Erro ao salvar no banco:', error);
-        throw new Error(`Erro ao salvar dados: ${error.message || 'Erro desconhecido'}`);
+        } else {
+          console.log('✅ SUCESSO com apenas status!');
+        }
+        
+      } catch (debugError: any) {
+        console.error('💥 ERRO NO DEBUG:', debugError);
+        throw new Error(`Erro de debug: ${debugError.message}`);
       }
 
       // Simular processamento de pagamento (substituir por integração real depois)
