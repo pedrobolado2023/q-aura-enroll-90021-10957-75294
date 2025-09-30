@@ -24,7 +24,7 @@ const Header = () => {
         <div className="flex items-center space-x-4">
           <Link to="/" className="flex items-center space-x-2">
             <h1 className="text-xl font-bold bg-gradient-primary bg-clip-text text-transparent">
-              Meu Site
+              Q-aura
             </h1>
           </Link>
         </div>
