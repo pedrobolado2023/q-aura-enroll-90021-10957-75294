@@ -179,8 +179,8 @@ const Assinar = () => {
             phone: customerData.phone,
             whatsapp: customerData.whatsapp,
             cpf: customerData.cpf,
-            birth_date: customerData.birthDate,
-            address: customerData.address,
+            // birth_date: customerData.birthDate, // Removido temporariamente 
+            // address: customerData.address, // Removido temporariamente - coluna não existe em prod
             status: 'pending',
             plan: 'mensal',
             payment_method: paymentData.method
