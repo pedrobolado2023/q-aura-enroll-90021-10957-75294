@@ -148,9 +148,9 @@ const Assinar = () => {
       };
 
       // 🔑 CONFIGURAÇÃO DAS CHAVES MERCADO PAGO
-      // Primeiro tenta pegar das variáveis de ambiente, depois usa fallback
-      const publicKey = import.meta.env.VITE_MERCADO_PAGO_PUBLIC_KEY || 'APP_USR-1ce19553-fcdd-469b-9e00-2bdf113f1035';
-      const accessToken = import.meta.env.VITE_MERCADO_PAGO_ACCESS_TOKEN || 'APP_USR-778407631893036-092213-cc300b09f44f7942b7eb772a9ad40c6e-142018015';
+      // Primeiro tenta pegar das variáveis de ambiente, depois usa fallback de demonstração
+      const publicKey = import.meta.env.VITE_MERCADO_PAGO_PUBLIC_KEY || 'TEST-DEMO-PUBLIC-KEY';
+      const accessToken = import.meta.env.VITE_MERCADO_PAGO_ACCESS_TOKEN || 'TEST-DEMO-ACCESS-TOKEN';
       
       console.log('🔑 Chaves Mercado Pago configuradas:', {
         publicKeySource: import.meta.env.VITE_MERCADO_PAGO_PUBLIC_KEY ? 'env' : 'fallback',
