@@ -249,85 +249,93 @@ const Assinar = () => {
         description: "Você será redirecionado para finalizar o pagamento",
       });
 
-      // Para PIX, criar pagamento real usando Mercado Pago SDK
+      // Para PIX, usar Mercado Pago Checkout (evita CORS)
       if (paymentData.method === 'pix' && subscription) {
-        console.log('📱 Criando pagamento PIX real...');
+        console.log('📱 Criando checkout PIX no Mercado Pago...');
         
         try {
-          // Criar dados do pagamento PIX
-          const pixPaymentData = {
-            transaction_amount: 9.90,
-            description: 'Assinatura Q-aura Premium - 30 dias',
-            payment_method_id: 'pix',
-            external_reference: subscription.id,
-            payer: {
-              email: customerData.email,
-              first_name: customerData.name.split(' ')[0],
-              last_name: customerData.name.split(' ').slice(1).join(' ') || 'Cliente',
-              identification: {
-                type: 'CPF',
-                number: customerData.cpf.replace(/\D/g, '')
+          // Usar SDK do Mercado Pago para criar checkout
+          if (window.MercadoPago) {
+            const mp = new window.MercadoPago(publicKey, {
+              locale: 'pt-BR'
+            });
+
+            // Criar preferência de checkout
+            const checkoutData = {
+              items: [
+                {
+                  title: 'Assinatura Q-aura Premium',
+                  description: 'Acesso completo por 30 dias',
+                  quantity: 1,
+                  unit_price: 9.90,
+                  currency_id: 'BRL'
+                }
+              ],
+              payer: {
+                email: customerData.email,
+                name: customerData.name,
+                identification: {
+                  type: 'CPF',
+                  number: customerData.cpf.replace(/\D/g, '')
+                }
+              },
+              external_reference: subscription.id,
+              payment_methods: {
+                excluded_payment_types: [
+                  { id: 'credit_card' },
+                  { id: 'debit_card' },
+                  { id: 'ticket' }
+                ],
+                included_payment_methods: [
+                  { id: 'pix' }
+                ]
+              },
+              back_urls: {
+                success: `${window.location.origin}/?payment=success`,
+                pending: `${window.location.origin}/?payment=pending`,
+                failure: `${window.location.origin}/?payment=failure`
+              },
+              auto_return: 'approved'
+            };
+
+            console.log('� Redirecionando para Mercado Pago Checkout...');
+            
+            // Redirecionar para checkout do Mercado Pago
+            mp.checkout({
+              preference: checkoutData,
+              render: {
+                container: '.checkout-btn',
+                label: 'Pagar com PIX'
               }
-            }
-          };
-
-          // Fazer requisição para criar pagamento PIX
-          const response = await fetch('https://api.mercadopago.com/v1/payments', {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${accessToken}`,
-              'Content-Type': 'application/json',
-              'X-Idempotency-Key': subscription.id // Evitar pagamentos duplicados
-            },
-            body: JSON.stringify(pixPaymentData)
-          });
-
-          if (!response.ok) {
-            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            });
+            
+            // Alternativa: Abrir em nova janela
+            const checkoutUrl = `https://www.mercadopago.com.br/checkout/v1/redirect?pref_id=${subscription.id}`;
+            window.open(checkoutUrl, '_blank');
+            
+            return;
           }
 
-          const pixPayment = await response.json();
-          console.log('✅ Pagamento PIX criado:', pixPayment);
-
-          // Extrair dados do PIX
-          const qrCodeData = pixPayment.point_of_interaction?.transaction_data?.qr_code;
-          const qrCodeBase64 = pixPayment.point_of_interaction?.transaction_data?.qr_code_base64;
-          const paymentId = pixPayment.id;
-
-          console.log('📱 Redirecionando para PIX com dados reais...');
-          navigate('/pagamento-pix', {
-            state: {
-              subscriptionId: subscription.id,
-              paymentId: paymentId,
-              amount: 9.90,
-              customerData: customerData,
-              paymentMethod: 'pix',
-              qrCode: qrCodeData,
-              qrCodeBase64: qrCodeBase64
-            }
-          });
-          return;
-
         } catch (error) {
-          console.error('❌ Erro ao criar pagamento PIX:', error);
+          console.error('❌ Erro ao criar checkout PIX:', error);
           
           toast({
             title: "Erro ao processar PIX",
             description: "Redirecionando para página PIX com código de demonstração",
             variant: "destructive"
           });
-
-          // Fallback: ir para página PIX sem dados reais
-          navigate('/pagamento-pix', {
-            state: {
-              subscriptionId: subscription.id,
-              amount: 9.90,
-              customerData: customerData,
-              paymentMethod: 'pix'
-            }
-          });
-          return;
         }
+
+        // Fallback: ir para página PIX sem dados reais
+        navigate('/pagamento-pix', {
+          state: {
+            subscriptionId: subscription.id,
+            amount: 9.90,
+            customerData: customerData,
+            paymentMethod: 'pix'
+          }
+        });
+        return;
       }
 
       // Para cartão, simular sucesso temporariamente (até implementar backend)
