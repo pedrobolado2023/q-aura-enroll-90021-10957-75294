@@ -13,12 +13,22 @@ const PagamentoPix = () => {
   const { toast } = useToast();
   const [copied, setCopied] = useState(false);
 
-  const { amount = 9.90, subscriptionId } = location.state || {};
-  const pixStaticCode = "00020126580014br.gov.bcb.pix0136123e4567-e12b-12d1-a456-42665544000027040000530398654049.905802BR5925QAURA EDUCACIONAL LTDA6009SAO PAULO61080540900062070503***6304";
+  const { 
+    amount = 9.90, 
+    subscriptionId, 
+    qrCode, 
+    qrCodeBase64, 
+    paymentId,
+    customerData,
+    paymentMethod 
+  } = location.state || {};
+  
+  // Usar código PIX real do Mercado Pago se disponível, senão usar fallback
+  const pixCode = qrCode || "00020126580014br.gov.bcb.pix0136123e4567-e12b-12d1-a456-42665544000027040000530398654049.905802BR5925QAURA EDUCACIONAL LTDA6009SAO PAULO61080540900062070503***6304";
 
   const copyToClipboard = async () => {
     try {
-      await navigator.clipboard.writeText(pixStaticCode);
+      await navigator.clipboard.writeText(pixCode);
       setCopied(true);
       toast({
         title: "Código PIX copiado!",
@@ -35,7 +45,13 @@ const PagamentoPix = () => {
   };
 
   const generateQRCodeUrl = () => {
-    const encodedPix = encodeURIComponent(pixStaticCode);
+    // Se temos QR Code base64 do Mercado Pago, usar ele
+    if (qrCodeBase64) {
+      return `data:image/png;base64,${qrCodeBase64}`;
+    }
+    
+    // Senão, gerar QR Code a partir do código PIX
+    const encodedPix = encodeURIComponent(pixCode);
     return `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodedPix}`;
   };
 
@@ -81,7 +97,7 @@ const PagamentoPix = () => {
               <div className="flex gap-2">
                 <Input 
                   id="pix-code"
-                  value={pixStaticCode}
+                  value={pixCode}
                   readOnly 
                   className="flex-1 bg-white text-xs"
                 />
