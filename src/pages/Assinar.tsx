@@ -112,10 +112,19 @@ const Assinar = () => {
 
       console.log('💾 Dados sendo inseridos na tabela subscriptions:', subscriptionData);
 
-      // ⚠️ SIMULAÇÃO: Por enquanto vamos simular até criar a tabela no Supabase
-      console.log('⚠️ Simulando inserção (aplicar migração primeiro)');
-      const subscription = { id: `sub_${Date.now()}` };
-      console.log('✅ Subscription simulada criada:', subscription);
+      // 💾 INSERÇÃO REAL NA TABELA SUBSCRIPTIONS
+      const { data: subscription, error: subscriptionError } = await supabase
+        .from('subscriptions')
+        .insert(subscriptionData)
+        .select()
+        .single();
+
+      if (subscriptionError) {
+        console.error('❌ Erro ao criar subscription:', subscriptionError);
+        throw new Error(`Erro ao salvar dados da assinatura: ${subscriptionError.message}`);
+      }
+
+      console.log('✅ Subscription criada com sucesso:', subscription);
 
       // 🏦 INTEGRAÇÃO REAL COM MERCADO PAGO
       console.log('💳 Iniciando pagamento real no Mercado Pago...');
@@ -135,19 +144,25 @@ const Assinar = () => {
         }
       };
 
-      // Verificar se as chaves do Mercado Pago estão configuradas
-      const publicKey = import.meta.env.VITE_MERCADO_PAGO_PUBLIC_KEY;
-      const accessToken = import.meta.env.VITE_MERCADO_PAGO_ACCESS_TOKEN;
+      // 🔑 CONFIGURAÇÃO DAS CHAVES MERCADO PAGO
+      // Primeiro tenta pegar das variáveis de ambiente, depois usa fallback
+      const publicKey = import.meta.env.VITE_MERCADO_PAGO_PUBLIC_KEY || 'APP_USR-1ce19553-fcdd-469b-9e00-2bdf113f1035';
+      const accessToken = import.meta.env.VITE_MERCADO_PAGO_ACCESS_TOKEN || 'APP_USR-778407631893036-092213-cc300b09f44f7942b7eb772a9ad40c6e-142018015';
       
-      if (!publicKey || !accessToken || publicKey.includes('your') || accessToken.includes('your')) {
-        console.warn('⚠️ Chaves do Mercado Pago não configuradas, usando simulação');
-        
-        // Simular processamento
-        await new Promise(resolve => setTimeout(resolve, 2000));
+      console.log('🔑 Chaves Mercado Pago configuradas:', {
+        publicKeySource: import.meta.env.VITE_MERCADO_PAGO_PUBLIC_KEY ? 'env' : 'fallback',
+        accessTokenSource: import.meta.env.VITE_MERCADO_PAGO_ACCESS_TOKEN ? 'env' : 'fallback',
+        publicKeyPrefix: publicKey.substring(0, 15),
+        accessTokenPrefix: accessToken.substring(0, 15)
+      });
+      
+      // Validação básica das chaves
+      if (!publicKey || !accessToken || publicKey === 'TEST-your-public-key-here' || accessToken === 'TEST-your-access-token-here') {
+        console.error('❌ Chaves do Mercado Pago inválidas');
         
         toast({
-          title: "Pagamento Simulado",
-          description: "Configure as chaves do Mercado Pago no arquivo .env para processar pagamentos reais",
+          title: "Erro de Configuração",
+          description: "Chaves do Mercado Pago não configuradas corretamente",
           variant: "destructive",
         });
         
