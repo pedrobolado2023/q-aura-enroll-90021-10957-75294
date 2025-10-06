@@ -19,6 +19,14 @@ export default defineConfig(({ mode }) => ({
   build: {
     rollupOptions: {
       output: {
+        // Force novo hash para quebrar cache
+        entryFileNames: `assets/[name]-${Date.now()}.js`,
+        chunkFileNames: `assets/[name]-${Date.now()}.js`,
+        assetFileNames: `assets/[name]-${Date.now()}.[ext]`
+      }
+    }
+  },
+      output: {
         manualChunks: {
           vendor: ['react', 'react-dom'],
           ui: ['@radix-ui/react-accordion', '@radix-ui/react-dialog', '@radix-ui/react-dropdown-menu'],
