@@ -209,6 +209,7 @@ const Assinar = () => {
 
       // ⚠️ SOLUÇÃO TEMPORÁRIA: Como não temos backend, usar URL do checkout direto
       console.log('🔄 Redirecionando para checkout do Mercado Pago...');
+      console.log('⚠️ CACHE BUSTED - Nova versão carregada:', Date.now());
       
       // Criar URL do checkout com os dados
       const checkoutUrl = new URL('https://www.mercadopago.com.br/checkout/v1/redirect');
