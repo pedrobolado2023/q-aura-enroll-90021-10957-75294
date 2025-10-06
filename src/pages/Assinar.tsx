@@ -82,7 +82,10 @@ const Assinar = () => {
     setIsProcessing(true);
     
     try {
-      console.log('🔄 Iniciando processamento de pagamento:', paymentData.method);
+      // 🚨 VERSÃO NOVA - SEM CORS! 🚨
+      console.log('🔄 NOVA VERSÃO SEM CORS - Iniciando processamento:', paymentData.method);
+      console.log('🎯 TIMESTAMP NOVA VERSÃO:', new Date().toISOString());
+      console.log('✅ SEM MAIS CHAMADAS PARA api.mercadopago.com/v1/payments!');
       
       // 🔐 CRÍTICO: Validar autenticação do usuário PRIMEIRO
       console.log('🔍 Validando usuário autenticado:', {
