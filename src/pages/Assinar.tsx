@@ -48,252 +48,193 @@ const Assinar = () => {
       { field: 'cpf', label: 'CPF' }
     ];
     
-    const missingFields = requiredFields.filter(
-      ({ field }) => !customerData[field as keyof typeof customerData]?.trim()
-    );
-
-    if (missingFields.length > 0) {
-      const missingLabels = missingFields.map(({ label }) => label).join(', ');
-      return { isValid: false, message: `Campos obrigatórios não preenchidos: ${missingLabels}` };
+    for (const { field, label } of requiredFields) {
+      if (!customerData[field as keyof typeof customerData]?.trim()) {
+        return {
+          isValid: false,
+          message: `Por favor, preencha o campo: ${label}`
+        };
+      }
     }
 
-    // Validação de email
+    // Validação básica de e-mail
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(customerData.email)) {
-      return { isValid: false, message: 'Por favor, insira um e-mail válido.' };
+      return {
+        isValid: false,
+        message: 'Por favor, insira um e-mail válido'
+      };
     }
 
-    // Validação de CPF (simples)
+    // Validação básica de CPF (apenas verificar se tem 11 dígitos)
     const cpfNumbers = customerData.cpf.replace(/\D/g, '');
     if (cpfNumbers.length !== 11) {
-      return { isValid: false, message: 'Por favor, insira um CPF válido com 11 dígitos.' };
+      return {
+        isValid: false,
+        message: 'Por favor, insira um CPF válido com 11 dígitos'
+      };
     }
 
     return { isValid: true, message: '' };
-  };
-
-  const handleStepOne = (e: React.FormEvent) => {
-    e.preventDefault();
-    const validation = validateCustomerData();
-    
-    if (!validation.isValid) {
-      toast({
-        title: "Campos obrigatórios",
-        description: validation.message,
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    setStep(2);
-  };
-
-  const generateCardToken = async (cardData: any) => {
-    return new Promise((resolve, reject) => {
-      // Verificar se o SDK do Mercado Pago está disponível
-      if (typeof window !== 'undefined' && window.MercadoPago && window.MercadoPago.createCardToken) {
-        window.MercadoPago.createCardToken({
-          cardNumber: cardData.number.replace(/\s/g, ''),
-          cardholderName: cardholderName,
-          cardExpirationMonth: cardData.expiry.split('/')[0],
-          cardExpirationYear: '20' + cardData.expiry.split('/')[1],
-          securityCode: cardData.cvc,
-          identificationType: 'CPF',
-          identificationNumber: customerData.cpf.replace(/\D/g, ''),
-        }, (status: number, response: any) => {
-          if (status === 200 || status === 201) {
-            resolve(response.id);
-          } else {
-            reject(response);
-          }
-        });
-      } else {
-        // Fallback: simular token para desenvolvimento
-        console.warn('SDK do Mercado Pago não disponível, simulando token');
-        setTimeout(() => {
-          resolve('simulated_token_' + Date.now());
-        }, 1000);
-      }
-    });
   };
 
   const handlePayment = async (paymentData: any) => {
     setIsProcessing(true);
     
     try {
-      console.log('Iniciando processamento de pagamento:', paymentData.method);
+      console.log('🔄 Iniciando processamento de pagamento:', paymentData.method);
       
-      // Validar dados do cliente antes de processar pagamento
+      // 🔐 CRÍTICO: Validar autenticação do usuário PRIMEIRO
+      console.log('🔍 Validando usuário autenticado:', {
+        user_exists: !!user,
+        user_id: user?.id,
+        user_email: user?.email
+      });
+      
+      if (!user?.id) {
+        throw new Error('Usuário não autenticado! Faça login antes de continuar.');
+      }
+
+      // Validar dados do cliente
       const validation = validateCustomerData();
       if (!validation.isValid) {
         throw new Error(validation.message);
       }
 
-      let paymentBody;
+      // 💾 Preparar dados para inserção na tabela subscriptions
+      const subscriptionData = {
+        user_id: user.id, // ← CRÍTICO: não pode ser null
+        amount: 9.90,
+        status: 'pending',
+        payment_method: paymentData.method,
+        expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString() // 30 dias
+      };
+
+      console.log('💾 Dados sendo inseridos na tabela subscriptions:', subscriptionData);
+
+      // ⚠️ SIMULAÇÃO: Por enquanto vamos simular até criar a tabela no Supabase
+      console.log('⚠️ Simulando inserção (aplicar migração primeiro)');
+      const subscription = { id: `sub_${Date.now()}` };
+      console.log('✅ Subscription simulada criada:', subscription);
+
+      // 🏦 INTEGRAÇÃO REAL COM MERCADO PAGO
+      console.log('💳 Iniciando pagamento real no Mercado Pago...');
       
-      if (paymentData.method === 'pix') {
-        console.log('Processando pagamento PIX');
-        paymentBody = {
-          transaction_amount: 9.90,
-          description: 'Assinatura Q-aura - Plano Mensal',
-          payment_method_id: 'pix',
-          payer: {
-            email: customerData.email,
-            first_name: customerData.name.split(' ')[0],
-            last_name: customerData.name.split(' ').slice(1).join(' '),
-            identification: {
-              type: 'CPF',
-              number: customerData.cpf.replace(/\D/g, '')
-            }
+      const paymentBody = {
+        transaction_amount: 9.90,
+        description: 'Assinatura Q-aura - Plano Mensal',
+        payment_method_id: paymentData.method === 'pix' ? 'pix' : 'visa',
+        payer: {
+          email: customerData.email,
+          first_name: customerData.name.split(' ')[0],
+          last_name: customerData.name.split(' ').slice(1).join(' ') || 'Usuario',
+          identification: {
+            type: 'CPF',
+            number: customerData.cpf.replace(/\D/g, '')
           }
-        };
-      } else if (paymentData.method === 'card') {
-        console.log('Processando pagamento com cartão');
-        // Para cartão, vamos simular por enquanto já que não temos dados do cartão
-        paymentBody = {
-          transaction_amount: 9.90,
-          description: 'Assinatura Q-aura - Plano Mensal',
-          payment_method_id: 'visa', // Simulado
-          payer: {
-            email: customerData.email,
-            first_name: customerData.name.split(' ')[0],
-            last_name: customerData.name.split(' ').slice(1).join(' '),
-            identification: {
-              type: 'CPF',
-              number: customerData.cpf.replace(/\D/g, '')
-            }
-          }
-        };
-      } else {
-        throw new Error('Método de pagamento não suportado');
+        }
+      };
+
+      // Verificar se as chaves do Mercado Pago estão configuradas
+      const publicKey = import.meta.env.VITE_MERCADO_PAGO_PUBLIC_KEY;
+      const accessToken = import.meta.env.VITE_MERCADO_PAGO_ACCESS_TOKEN;
+      
+      if (!publicKey || !accessToken || publicKey.includes('your') || accessToken.includes('your')) {
+        console.warn('⚠️ Chaves do Mercado Pago não configuradas, usando simulação');
+        
+        // Simular processamento
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        
+        toast({
+          title: "Pagamento Simulado",
+          description: "Configure as chaves do Mercado Pago no arquivo .env para processar pagamentos reais",
+          variant: "destructive",
+        });
+        
+        return;
       }
 
-      // Testar se conseguimos conectar com o banco
-      console.log('🔍 SUPER DEBUG - Investigando banco de dados...');
+      // Fazer requisição real para o Mercado Pago
+      console.log('🚀 Enviando pagamento para Mercado Pago...');
       
-      // 1. Testar conexão básica com Supabase
-      console.log('🔗 Testando conexão básica...');
-      const { data: basicTest, error: basicError } = await supabase
-        .from('subscriptions')
-        .select('count')
-        .limit(1);
-      
-      console.log('🔗 Resultado conexão:', { basicTest, basicError });
-      
-      // 2. Tentar descobrir a estrutura exata da tabela
-      console.log('🏗️ Investigando estrutura da tabela...');
-      
-      // Tentar diferentes approaches para descobrir colunas
-      try {
-        // Approach 1: Tentar buscar 1 registro para ver estrutura
-        const { data: sampleData, error: sampleError } = await supabase
-          .from('subscriptions')
-          .select('*')
-          .limit(1);
+      const response = await fetch('https://api.mercadopago.com/v1/payments', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${accessToken}`,
+          'X-Idempotency-Key': `${subscription.id}-${Date.now()}`
+        },
+        body: JSON.stringify(paymentBody)
+      });
+
+      const paymentResult = await response.json();
+      console.log('💰 Resposta do Mercado Pago:', paymentResult);
+
+      if (!response.ok) {
+        throw new Error(`Erro no Mercado Pago: ${paymentResult.message || 'Erro desconhecido'}`);
+      }
+
+      // Processar resposta baseada no método de pagamento
+      if (paymentData.method === 'pix') {
+        // Para PIX, mostrar QR Code
+        const qrCode = paymentResult.point_of_interaction?.transaction_data?.qr_code;
+        const qrCodeBase64 = paymentResult.point_of_interaction?.transaction_data?.qr_code_base64;
         
-        console.log('📋 Dados de exemplo:', { sampleData, sampleError });
-        
-        // Approach 2: Tentar inserir um objeto vazio para ver que erro aparece
-        console.log('🧪 Testando inserção vazia...');
-        const { data: emptyInsert, error: emptyError } = await supabase
-          .from('subscriptions')
-          .insert({})
-          .select();
-        
-        console.log('🧪 Resultado inserção vazia:', { emptyInsert, emptyError });
-        
-        // Approach 3: Tentar inserir com campos básicos
-        console.log('💾 Testando inserção básica...');
-        const { data: basicInsert, error: basicInsertError } = await supabase
-          .from('subscriptions')
-          .insert({ status: 'pending' })
-          .select();
-        
-        console.log('💾 Resultado inserção básica:', { basicInsert, basicInsertError });
-        
-        if (basicInsertError) {
-          console.error('🔥 ERRO ESPECÍFICO DA INSERÇÃO:', {
-            message: basicInsertError.message,
-            details: basicInsertError.details,
-            hint: basicInsertError.hint,
-            code: basicInsertError.code
+        if (qrCode || qrCodeBase64) {
+          console.log('🎯 PIX gerado com sucesso!');
+          
+          toast({
+            title: "PIX Gerado com Sucesso!",
+            description: "Use o QR Code ou código PIX para finalizar o pagamento",
           });
-          
-          // Vamos tentar descobrir quais campos são obrigatórios
-          console.log('🔍 Tentando diferentes combinações de campos...');
-          
-          // Teste 1: id + status
-          const test1 = await supabase
-            .from('subscriptions')
-            .insert({ id: crypto.randomUUID(), status: 'pending' })
-            .select();
-          console.log('Test 1 (id + status):', test1);
-          
-          if (test1.error) {
-            // Teste 2: user_id + status  
-            const test2 = await supabase
-              .from('subscriptions')
-              .insert({ user_id: crypto.randomUUID(), status: 'pending' })
-              .select();
-            console.log('Test 2 (user_id + status):', test2);
-            
-            if (test2.error) {
-              // Teste 3: campos mais completos
-              const test3 = await supabase
-                .from('subscriptions')
-                .insert({ 
-                  user_id: crypto.randomUUID(),
-                  status: 'pending',
-                  plan: 'premium',
-                  created_at: new Date().toISOString()
-                })
-                .select();
-              console.log('Test 3 (completo):', test3);
-              
-              if (test3.error) {
-                throw new Error(`Não conseguiu identificar estrutura da tabela: ${test3.error.message}`);
-              } else {
-                console.log('✅ SUCESSO com campos completos!');
-              }
-            } else {
-              console.log('✅ SUCESSO com user_id + status!');
-            }
-          } else {
-            console.log('✅ SUCESSO com id + status!');
-          }
+
+          // Redirecionar para página de PIX com dados
+          navigate('/pagamento-pix', { 
+            state: { 
+              qrCode,
+              qrCodeBase64,
+              paymentId: paymentResult.id,
+              amount: 9.90,
+              subscriptionId: subscription.id
+            } 
+          });
         } else {
-          console.log('✅ SUCESSO com apenas status!');
+          throw new Error('QR Code PIX não foi gerado');
         }
         
-      } catch (debugError: any) {
-        console.error('💥 ERRO NO DEBUG:', debugError);
-        throw new Error(`Erro de debug: ${debugError.message}`);
+      } else {
+        // Para cartão, verificar se foi aprovado
+        if (paymentResult.status === 'approved') {
+          console.log('✅ Pagamento no cartão aprovado!');
+          
+          toast({
+            title: "Pagamento Aprovado!",
+            description: "Sua assinatura foi ativada com sucesso!",
+          });
+
+          // Redirecionar para sucesso
+          navigate('/pagamento-sucesso', { 
+            state: { 
+              method: 'card',
+              amount: 9.90,
+              paymentId: paymentResult.id,
+              subscriptionId: subscription.id
+            } 
+          });
+        } else {
+          throw new Error(`Pagamento não aprovado: ${paymentResult.status_detail}`);
+        }
       }
 
-      // Simular processamento de pagamento (substituir por integração real depois)
-      await new Promise(resolve => setTimeout(resolve, 2000));
-
-      toast({
-        title: "Pagamento Processado!",
-        description: paymentData.method === 'pix' 
-          ? "PIX gerado com sucesso! Escaneie o código para finalizar."
-          : "Pagamento no cartão processado com sucesso!",
-      });
-
-      navigate('/pagamento-sucesso', { 
-        state: { 
-          method: paymentData.method,
-          amount: 9.90
-        } 
-      });
-      
     } catch (error: any) {
-      console.error('Erro no pagamento:', error);
+      console.error('❌ Erro no pagamento:', error);
       
       let errorMessage = "Não foi possível processar o pagamento. Tente novamente.";
       
-      if (error.message?.includes('salvar dados')) {
-        errorMessage = "Erro ao salvar seus dados. Verifique sua conexão e tente novamente.";
+      if (error.message?.includes('não autenticado')) {
+        errorMessage = "Você precisa estar logado para fazer uma assinatura. Faça login e tente novamente.";
+      } else if (error.message?.includes('Mercado Pago')) {
+        errorMessage = `Erro no processamento: ${error.message}`;
       } else if (error.message?.includes('CPF')) {
         errorMessage = "CPF inválido. Verifique os dados informados.";
       } else if (error.message?.includes('email')) {
@@ -337,212 +278,233 @@ const Assinar = () => {
             <CardDescription className="text-lg">
               Preencha seus dados para começar sua jornada de estudos
             </CardDescription>
-            <div className="mt-4 p-4 bg-muted/50 rounded-lg">
-              <div className="text-2xl font-bold bg-gradient-primary bg-clip-text text-transparent mb-1">
-                R$ 9,90/mês
-              </div>
-              <div className="text-sm text-muted-foreground">
-                Cancele quando quiser
-              </div>
-            </div>
           </CardHeader>
 
           <CardContent>
-            {/* Progress Indicator */}
-            <div className="mb-6">
-              <div className="flex items-center justify-between mb-2">
-                <span className={`text-sm ${step >= 1 ? 'text-primary' : 'text-muted-foreground'}`}>
-                  Dados Pessoais
-                </span>
-                <span className={`text-sm ${step >= 2 ? 'text-primary' : 'text-muted-foreground'}`}>
-                  Pagamento
-                </span>
-              </div>
-              <div className="w-full bg-muted rounded-full h-2">
-                <div 
-                  className="bg-gradient-primary h-2 rounded-full transition-all duration-300" 
-                  style={{ width: `${(step / 2) * 100}%` }}
-                ></div>
-              </div>
-            </div>
-
             {step === 1 && (
-              <form onSubmit={handleStepOne} className="space-y-6">
-                <div className="space-y-2">
-                  <Label htmlFor="name">Nome Completo *</Label>
-                  <Input
-                    id="name"
-                    name="name"
-                    placeholder="Digite seu nome completo"
-                    value={customerData.name}
-                    onChange={handleChange}
-                    required
-                  />
+              <div className="space-y-6">
+                <div>
+                  <h3 className="text-xl font-semibold mb-4 flex items-center">
+                    <Shield className="mr-2 h-5 w-5 text-primary" />
+                    Seus Dados Pessoais
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="md:col-span-2">
+                      <Label htmlFor="name">Nome Completo</Label>
+                      <Input
+                        id="name"
+                        name="name"
+                        type="text"
+                        value={customerData.name}
+                        onChange={handleChange}
+                        placeholder="Seu nome completo"
+                        required
+                      />
+                    </div>
+                    
+                    <div>
+                      <Label htmlFor="email">E-mail</Label>
+                      <Input
+                        id="email"
+                        name="email"
+                        type="email"
+                        value={customerData.email}
+                        onChange={handleChange}
+                        placeholder="seu@email.com"
+                        required
+                      />
+                    </div>
+                    
+                    <div>
+                      <Label htmlFor="cpf">CPF</Label>
+                      <Input
+                        id="cpf"
+                        name="cpf"
+                        type="text"
+                        value={customerData.cpf}
+                        onChange={handleChange}
+                        placeholder="000.000.000-00"
+                        required
+                      />
+                    </div>
+                    
+                    <div>
+                      <Label htmlFor="phone">Telefone</Label>
+                      <Input
+                        id="phone"
+                        name="phone"
+                        type="tel"
+                        value={customerData.phone}
+                        onChange={handleChange}
+                        placeholder="(11) 99999-9999"
+                        required
+                      />
+                    </div>
+                    
+                    <div>
+                      <Label htmlFor="whatsapp">WhatsApp</Label>
+                      <Input
+                        id="whatsapp"
+                        name="whatsapp"
+                        type="tel"
+                        value={customerData.whatsapp}
+                        onChange={handleChange}
+                        placeholder="(11) 99999-9999"
+                        required
+                      />
+                    </div>
+                    
+                    <div>
+                      <Label htmlFor="birthDate">Data de Nascimento</Label>
+                      <Input
+                        id="birthDate"
+                        name="birthDate"
+                        type="date"
+                        value={customerData.birthDate}
+                        onChange={handleChange}
+                      />
+                    </div>
+                    
+                    <div className="md:col-span-2">
+                      <Label htmlFor="address">Endereço Completo</Label>
+                      <Input
+                        id="address"
+                        name="address"
+                        type="text"
+                        value={customerData.address}
+                        onChange={handleChange}
+                        placeholder="Rua, número, bairro, cidade, estado"
+                      />
+                    </div>
+                  </div>
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="email">E-mail *</Label>
-                  <Input
-                    id="email"
-                    name="email"
-                    type="email"
-                    placeholder="seu@email.com"
-                    value={customerData.email}
-                    onChange={handleChange}
-                    required
-                  />
-                </div>
+                <Separator />
 
-                <div className="space-y-2">
-                  <Label htmlFor="phone">Telefone (com DDD) *</Label>
-                  <Input
-                    id="phone"
-                    name="phone"
-                    type="tel"
-                    placeholder="(11) 98765-4321"
-                    value={customerData.phone}
-                    onChange={handleChange}
-                    required
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="whatsapp">WhatsApp (com DDD) *</Label>
-                  <Input
-                    id="whatsapp"
-                    name="whatsapp"
-                    type="tel"
-                    placeholder="(11) 98765-4321"
-                    value={customerData.whatsapp}
-                    onChange={handleChange}
-                    required
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    É por este número que você receberá o conteúdo
-                  </p>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="cpf">CPF *</Label>
-                  <Input
-                    id="cpf"
-                    name="cpf"
-                    placeholder="000.000.000-00"
-                    value={customerData.cpf}
-                    onChange={handleChange}
-                    required
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="birthDate">Data de Nascimento</Label>
-                  <Input
-                    id="birthDate"
-                    name="birthDate"
-                    type="date"
-                    value={customerData.birthDate}
-                    onChange={handleChange}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="address">Endereço (Opcional)</Label>
-                  <Input
-                    id="address"
-                    name="address"
-                    placeholder="Rua, número, bairro, cidade - UF"
-                    value={customerData.address}
-                    onChange={handleChange}
-                  />
-                </div>
-
-                <div className="pt-4">
+                <div className="text-center">
                   <Button 
-                    type="submit" 
-                    size="lg" 
-                    variant="hero"
-                    className="w-full text-lg py-6 h-auto"
+                    onClick={() => {
+                      const validation = validateCustomerData();
+                      if (validation.isValid) {
+                        setStep(2);
+                      } else {
+                        toast({
+                          title: "Dados incompletos",
+                          description: validation.message,
+                          variant: "destructive",
+                        });
+                      }
+                    }}
+                    className="w-full"
+                    size="lg"
                   >
                     Continuar para Pagamento
+                    <ChevronLeft className="ml-2 h-4 w-4 rotate-180" />
                   </Button>
                 </div>
-              </form>
+              </div>
             )}
 
             {step === 2 && (
               <div className="space-y-6">
-                <div className="text-center mb-6">
-                  <h3 className="text-xl font-semibold mb-2">Escolha a forma de pagamento</h3>
-                  <p className="text-muted-foreground">
-                    Como você gostaria de pagar sua assinatura?
-                  </p>
-                </div>
-
-                <div className="grid gap-4">
-                  <Button
-                    variant="outline"
-                    className="h-auto p-4 justify-start"
-                    onClick={() => handlePayment({ method: 'pix' })}
-                    disabled={isProcessing}
-                  >
-                    <div className="flex items-center space-x-3">
-                      <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center">
-                        <span className="text-primary font-bold text-sm">PIX</span>
-                      </div>
-                      <div className="text-left">
-                        <div className="font-medium">PIX</div>
-                        <div className="text-sm text-muted-foreground">Pagamento instantâneo</div>
-                      </div>
-                    </div>
-                  </Button>
-
-                  <Button
-                    variant="outline"
-                    className="h-auto p-4 justify-start"
-                    onClick={() => {
-                      // Por enquanto vamos simular cartão como PIX
-                      handlePayment({ method: 'card' });
-                    }}
-                    disabled={isProcessing}
-                  >
-                    <div className="flex items-center space-x-3">
-                      <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center">
-                        <span className="text-primary font-bold text-sm">💳</span>
-                      </div>
-                      <div className="text-left">
-                        <div className="font-medium">Cartão de Crédito</div>
-                        <div className="text-sm text-muted-foreground">Parcelamento disponível</div>
-                      </div>
-                    </div>
-                  </Button>
-                </div>
-
-                <div className="pt-4">
+                <div>
                   <Button 
                     variant="ghost" 
                     onClick={() => setStep(1)}
-                    className="w-full"
-                    disabled={isProcessing}
+                    className="mb-4"
                   >
-                    ← Voltar para dados pessoais
+                    <ChevronLeft className="mr-2 h-4 w-4" /> Voltar aos Dados
                   </Button>
-                </div>
-
-                {isProcessing && (
-                  <div className="text-center py-4">
-                    <div className="inline-flex items-center space-x-2">
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
-                      <span>Processando pagamento...</span>
+                  
+                  <h3 className="text-xl font-semibold mb-4 flex items-center">
+                    <CreditCard className="mr-2 h-5 w-5 text-primary" />
+                    Escolha a Forma de Pagamento
+                  </h3>
+                  
+                  <div className="bg-muted/50 p-4 rounded-lg mb-6">
+                    <div className="flex justify-between items-center">
+                      <div>
+                        <p className="font-medium">Plano Mensal Q-aura</p>
+                        <p className="text-sm text-muted-foreground">Acesso completo à plataforma</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-2xl font-bold text-primary">R$ 9,90</p>
+                        <p className="text-sm text-muted-foreground">/mês</p>
+                      </div>
                     </div>
                   </div>
-                )}
+
+                  <div className="grid gap-4">
+                    <Button
+                      onClick={() => handlePayment({ method: 'pix' })}
+                      disabled={isProcessing}
+                      className="w-full h-16 text-left justify-start relative overflow-hidden"
+                      variant="outline"
+                    >
+                      <div className="flex items-center space-x-4">
+                        <div className="w-8 h-8 bg-primary/10 rounded flex items-center justify-center">
+                          <span className="text-xs font-bold">PIX</span>
+                        </div>
+                        <div>
+                          <p className="font-medium">PIX</p>
+                          <p className="text-sm text-muted-foreground">Pagamento instantâneo</p>
+                        </div>
+                      </div>
+                    </Button>
+
+                    <Button
+                      onClick={() => {
+                        if (!cardholderName.trim()) {
+                          toast({
+                            title: "Nome no cartão obrigatório",
+                            description: "Por favor, preencha o nome que está no cartão",
+                            variant: "destructive",
+                          });
+                          return;
+                        }
+                        handlePayment({ method: 'card' });
+                      }}
+                      disabled={isProcessing}
+                      className="w-full h-16 text-left justify-start"
+                      variant="outline"
+                    >
+                      <div className="flex items-center space-x-4">
+                        <CreditCard className="h-6 w-6" />
+                        <div>
+                          <p className="font-medium">Cartão de Crédito</p>
+                          <p className="text-sm text-muted-foreground">Mastercard, Visa, Elo</p>
+                        </div>
+                      </div>
+                    </Button>
+                  </div>
+
+                  <div className="mt-4">
+                    <Label htmlFor="cardholderName">Nome no Cartão (obrigatório para cartão)</Label>
+                    <Input
+                      id="cardholderName"
+                      type="text"
+                      value={cardholderName}
+                      onChange={(e) => setCardholderName(e.target.value)}
+                      placeholder="Nome exatamente como está no cartão"
+                    />
+                  </div>
+
+                  {isProcessing && (
+                    <div className="text-center p-4">
+                      <div className="inline-flex items-center space-x-2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
+                        <span>Processando pagamento...</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex items-center justify-center text-sm text-muted-foreground">
+                  <Lock className="mr-2 h-4 w-4" />
+                  Pagamento 100% seguro e criptografado
+                </div>
               </div>
             )}
-
-            <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground mt-6">
-              <Lock className="w-4 h-4" />
-              <span>Dados protegidos e pagamento seguro</span>
-            </div>
           </CardContent>
         </Card>
       </div>

@@ -11,6 +11,7 @@ import Admin from "./pages/Admin";
 import NotFound from "./pages/NotFound";
 import PagamentoSucesso from "./pages/PagamentoSucesso";
 import PagamentoErro from "./pages/PagamentoErro";
+import PagamentoPix from "./pages/PagamentoPix";
 
 const queryClient = new QueryClient();
 
@@ -26,6 +27,7 @@ const App = () => (
             <Route path="/auth" element={<Auth />} />
             <Route path="/admin" element={<Admin />} />
             <Route path="/assinar" element={<Assinar />} />
+            <Route path="/pagamento-pix" element={<PagamentoPix />} />
             <Route path="/pagamento-sucesso" element={<PagamentoSucesso />} />
             <Route path="/pagamento-erro" element={<PagamentoErro />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
