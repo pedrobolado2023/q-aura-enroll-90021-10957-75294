@@ -158,6 +158,25 @@ const Assinar = () => {
         publicKeyPrefix: publicKey.substring(0, 15),
         accessTokenPrefix: accessToken.substring(0, 15)
       });
+
+      // 🔧 CONFIGURAR MERCADO PAGO PARA PRODUÇÃO
+      if (window.MercadoPago) {
+        try {
+          // Detectar se são chaves de produção (não começam com TEST)
+          const isProduction = !publicKey.startsWith('TEST-') && !accessToken.startsWith('TEST-');
+          
+          // Inicializar MercadoPago com a chave pública
+          const mp = new window.MercadoPago(publicKey, {
+            locale: 'pt-BR'
+          });
+          
+          console.log('🚀 MercadoPago inicializado em modo:', isProduction ? 'PRODUÇÃO' : 'TESTE');
+          console.log('🔑 Usando chave pública:', publicKey.substring(0, 15) + '...');
+          
+        } catch (error) {
+          console.error('❌ Erro ao inicializar MercadoPago:', error);
+        }
+      }
       
       // Validação básica das chaves
       if (!publicKey || !accessToken || publicKey === 'TEST-your-public-key-here' || accessToken === 'TEST-your-access-token-here') {
